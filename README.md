@@ -15,11 +15,50 @@ interactively, so there are no flags to look up.
 
 Python 3.6 or newer. No third-party packages.
 
+## Install (run it from anywhere)
+
+```
+git clone https://github.com/CypherNova1337/ruleprune.git
+cd ruleprune
+sh install.sh
+```
+
+`install.sh` symlinks the script into a directory on your `PATH`
+(`/usr/local/bin` when writable, otherwise `~/.local/bin`) as the command
+`ruleprune`. After that, run it from any directory:
+
+```
+ruleprune
+```
+
+If the installer says its target directory isn't on your `PATH`, add the line
+it prints to your shell profile and open a new shell.
+
+You don't have to install it — `python3 ruleprune.py` works too.
+
+## Updating
+
+```
+git pull
+```
+
+Because the install is a symlink into the repo, pulling the latest version
+updates the `ruleprune` command automatically — there's no need to re-run the
+installer.
+
 ## Usage
 
 ```
-python3 ruleprune.py
+ruleprune          # if installed
+python3 ruleprune.py   # if not
 ```
+
+At the path prompts you can:
+
+- Use `~/`, `~user/`, and `$VARS` — e.g. `~/Documents/Wordlists/rockyou.txt`
+  resolves to your home directory.
+- Press **Tab** to complete file and directory names (where your platform
+  provides readline).
 
 Then answer the prompts. A typical run:
 

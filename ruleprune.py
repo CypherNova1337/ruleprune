@@ -11,11 +11,35 @@ Everything you could set with flags is asked interactively, so there is
 nothing to memorize. Run it with no arguments to start the questionnaire.
 """
 
+import glob
 import os
 import string
 import sys
 
+try:
+    import readline  # enables line editing and tab completion where available
+    _HAS_READLINE = True
+except ImportError:  # e.g. a stock Windows Python
+    readline = None
+    _HAS_READLINE = False
+
 DEFAULT_SPECIALS = "!@#$%^&*()-_=+[]{};:'\",.<>/?\\|`~ "
+
+
+def _expand_path(raw):
+    """Resolve ~, ~user and $VARs so shell-style paths work as typed."""
+    return os.path.expanduser(os.path.expandvars(raw))
+
+
+def _path_completer(text, state):
+    """readline completer that completes filesystem paths (with ~ support)."""
+    expanded = _expand_path(text)
+    matches = sorted(glob.glob(expanded + "*"))
+    results = [m + (os.sep if os.path.isdir(m) else "") for m in matches]
+    try:
+        return results[state]
+    except IndexError:
+        return None
 
 
 def _clear_carriage(text):
@@ -108,11 +132,29 @@ class Policy:
 # Interactive prompt helpers
 # ---------------------------------------------------------------------------
 
-def ask_text(prompt, default=None, allow_blank=False):
+def _read_line(prompt, path=False):
+    """Read one line, optionally with tab completion for filesystem paths."""
+    if path and _HAS_READLINE:
+        old_completer = readline.get_completer()
+        old_delims = readline.get_completer_delims()
+        readline.set_completer(_path_completer)
+        # Treat the whole line as one token so paths containing spaces or
+        # slashes complete correctly.
+        readline.set_completer_delims("\n")
+        readline.parse_and_bind("tab: complete")
+        try:
+            return input(prompt)
+        finally:
+            readline.set_completer(old_completer)
+            readline.set_completer_delims(old_delims)
+    return input(prompt)
+
+
+def ask_text(prompt, default=None, allow_blank=False, path=False):
     suffix = f" [{default}]" if default is not None else ""
     while True:
         try:
-            raw = input(f"{prompt}{suffix}: ").strip()
+            raw = _read_line(f"{prompt}{suffix}: ", path=path).strip()
         except EOFError:
             raw = ""
         if not raw:
@@ -122,6 +164,8 @@ def ask_text(prompt, default=None, allow_blank=False):
                 return ""
             print("  Please enter a value.")
             continue
+        if path:
+            raw = _expand_path(raw)
         return raw
 
 
@@ -295,13 +339,13 @@ def main():
     print("This walks an existing wordlist and writes a new one containing")
     print("only the entries that satisfy a password policy you describe.")
 
-    input_path = ask_text("\nPath to the source wordlist")
+    input_path = ask_text("\nPath to the source wordlist", path=True)
     while not os.path.isfile(input_path):
         print(f"  No file found at '{input_path}'.")
-        input_path = ask_text("Path to the source wordlist")
+        input_path = ask_text("Path to the source wordlist", path=True)
 
     default_out = os.path.splitext(os.path.basename(input_path))[0] + ".pruned.txt"
-    output_path = ask_text("Path for the filtered output", default=default_out)
+    output_path = ask_text("Path for the filtered output", default=default_out, path=True)
     while not confirm_overwrite(output_path):
         output_path = ask_text("Path for the filtered output", default=default_out)
 
