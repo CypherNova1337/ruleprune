@@ -345,9 +345,21 @@ def main():
         input_path = ask_text("Path to the source wordlist", path=True)
 
     default_out = os.path.splitext(os.path.basename(input_path))[0] + ".pruned.txt"
-    output_path = ask_text("Path for the filtered output", default=default_out, path=True)
-    while not confirm_overwrite(output_path):
-        output_path = ask_text("Path for the filtered output", default=default_out)
+    while True:
+        output_path = ask_text(
+            "Path for the filtered output", default=default_out, path=True
+        )
+        # If the answer is a directory (or ends with a separator), write the
+        # default filename inside it rather than treating the folder as a file.
+        if output_path.endswith((os.sep, "/")) or os.path.isdir(output_path):
+            output_path = os.path.join(output_path, default_out)
+            print(f"  That's a directory; writing to '{output_path}'.")
+        # Never let the output clobber the source wordlist.
+        if os.path.abspath(output_path) == os.path.abspath(input_path):
+            print("  That's the source wordlist. Choose a different output path.")
+            continue
+        if confirm_overwrite(output_path):
+            break
 
     dedupe = ask_yes_no("Drop duplicate entries from the output?", default=False)
 
